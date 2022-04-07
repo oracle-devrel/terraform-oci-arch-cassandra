@@ -1,0 +1,244 @@
+title: "Deploy Cassandra cluster in OCI"
+stackDescription: "Deploy typical six-node deployment of a Cassandra cluster on Oracle Cloud Infrastructure Compute instances"
+schemaVersion: 1.2.0
+version: "20201104"
+locale: "en"
+
+variableGroups:
+- title: General Configuration
+  visible: false
+  variables:
+  - tenancy_ocid
+  - region
+  - release
+
+- title: Required Configuration
+  visible: true  
+  variables:
+  - compartment_ocid
+  - use_private_subnet
+  - node_shape
+  - node_flex_shape_ocpus
+  - node_flex_shape_memory
+  - node_count
+  - seeds_count
+  - show_advanced
+
+- title: Networking Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - vcn_cidr
+  - cassandra_subnet_cidr
+  - label_prefix
+
+- title: Compute Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - instance_os
+  - linux_os_version
+
+- title: Cassandra Optional Configuration
+  visible: 
+      and:
+        - show_advanced
+  variables:
+  - cassandra_version  
+  - storage_port
+  - ssl_storage_port
+
+variables:
+
+  show_advanced:
+    type: boolean
+    title: "Show advanced options?"
+    description: "Shows advanced options."
+    visible: true
+    default: false
+
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    required: true
+    visibile: true
+    title: "Compartment"
+    description: "Compartment where your Cassandra cluster will be deployed."
+
+  region:
+    type: oci:identity:region:name
+    required: true
+    visibile: true
+    title: "Region"
+    description: "Choose Region where your Cassandra cluster will be deployed."
+
+  use_private_subnet:
+    type: boolean
+    title: "Use Private Subnet?"
+    description: "Decide if you want to hide Cassandra in the private subnet with access via Bastion Service."
+    visible: true
+    default: true
+
+  node_shape:
+    type: oci:core:instanceshape:name
+    required: true
+    title: "Cassandra nodes shape"
+    description: "Choose Instance Shape for Cassandra nodes."
+    default: "BM.DenseIO2.52"
+    dependsOn:
+      compartmentId: ${compartment_ocid}
+
+  node_flex_shape_ocpus:
+    type: number
+    required: false
+    minimum: 1
+    maximum: 128
+    multipleOf: 1
+    default: 1
+    title: "Flex Shape OCPUs"
+    description: "Choose number of OCPUs for Flex Shape."
+    visible:
+      and:
+        - or:
+          - eq:
+            - node_shape
+            - "VM.Standard.E3.Flex"
+          - eq:
+            - node_shape
+            - "VM.Standard.E4.Flex"
+          - eq:
+            - node_shape
+            - "VM.Optimized3.Flex"
+
+  node_flex_shape_memory:
+    type: number
+    required: false
+    minimum: 1
+    maximum: 128
+    multipleOf: 1
+    default: 10
+    title: "Flex Shape Memory (GB)"
+    description: "Choose number GB for Flex Shape Memory."
+    visible:
+      and:
+        - or:
+          - eq:
+            - node_shape
+            - "VM.Standard.E3.Flex"
+          - eq:
+            - node_shape
+            - "VM.Standard.E4.Flex"
+          - eq:
+            - node_shape
+            - "VM.Optimized3.Flex"
+
+  node_count:
+    type: number
+    required: false
+    minimum: 3
+    maximum: 1000
+    multipleOf: 1
+    default: 6
+    title: "Number of nodes in Cassandra cluster"
+    description: "Choose the number of nodes in Cassandra cluster (includes seed and non-seed nodes)."
+
+  seeds_count:
+    type: number
+    required: false
+    minimum: 3
+    maximum: 1000
+    multipleOf: 1
+    default: 3
+    title: "Number of seed nodes in Cassandra cluster"
+    description: "Choose the number of seed nodes in Cassandra cluster."
+
+  cassandra_version:
+    type: enum
+    required: false
+    visible: true
+    title: "Cassandra version"
+    description: "Choose version of Cassandra."
+    default: "3.11.11"
+    enum:
+      - "3.11.11"  
+
+  vcn_cidr:
+    type: string
+    visible: true
+    required: false
+    pattern: "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\/(3[0-2]|[1-2]?[0-9])$"
+    title: "VCN CIDR"
+    description: "Choose VCN CIDR for your Cassandra cluster deployment."
+
+  cassandra_subnet_cidr:
+    type: string
+    visible: true
+    required: false
+    pattern: "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]).(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\/(3[0-2]|[1-2]?[0-9])$"
+    title: "Cassandra Subnet CIDR"
+    description: "Choose Public or Private Subnet CIDR for your Cassandra cluster deployment."
+
+  instance_os:
+    type: enum
+    required: false
+    visible: true
+    title: "Instance OS"
+    description: "An Operating System that determines the operating system for Cassandra nodes."
+    default: "Oracle Linux"
+    enum:
+      - "Oracle Linux"
+
+  linux_os_version:
+    type: enum
+    required: false
+    visible: true
+    title: "Instance OS version"
+    description: "An Operating System version that determines the operating system version for Cassandra nodes."
+    default: "7.9"
+    enum:
+      - "7.9"       
+
+  label_prefix:
+    type: string
+    required: false
+    visible: false
+    title: "Cassandra Hostname Prefix"
+    description: "Type Cassandra Hostname Prefix."
+
+  storage_port:
+    type: number
+    required: false
+    minimum: 1
+    maximum: 65536
+    multipleOf: 1
+    default: 7000
+    title: "Storage Port in Cassandra cluster"
+    description: "Choose Storage Port in Cassandra cluster."
+
+  ssl_storage_port:
+    type: number
+    required: false
+    minimum: 1
+    maximum: 65536
+    multipleOf: 1
+    default: 7001
+    title: "SSL Storage Port in Cassandra cluster"
+    description: "Choose SSL Storage Port in Cassandra cluster."
+
+  release:
+    type: string
+    required: false
+    visible: false
+    title: "Reference Architecture Release (OCI Architecture Center)"
+
+outputs:
+
+  generated_ssh_private_key:
+    title: "Generated SSH Private Key"
+    displayText: "Generated SSH Private Key"
+    type: copyableString
+    visible: true
+
+
+  
